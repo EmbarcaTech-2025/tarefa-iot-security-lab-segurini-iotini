@@ -1,4 +1,4 @@
-#ifndef WIFI_CONN_H
-#define WIFI_CONN_H
-void connect_to_wifi(const char *ssid, const char *password);
-#endif
+#include "pico/cyw43_arch.h"
+#include "pico/stdlib.h"
+
+bool connect_to_wifi(const char *ssid, const char *password, char *err_msg);
