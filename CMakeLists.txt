@@ -36,12 +36,12 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(main 
-    include/cryptography.c
-    include/wifi_conn.c
-    include/mqtt_comm.c
-    include/ssd1306.c
-    include/init_hardware.c
-    include/virtual_keyboard.c
+    src/cryptography.c
+    src/wifi_conn.c
+    src/mqtt_comm.c
+    src/ssd1306.c
+    src/init_hardware.c
+    src/virtual_keyboard.c
     apps/main.c
 )
 

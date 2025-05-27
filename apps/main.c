@@ -7,13 +7,16 @@
 #include "ssd1306.h"
 #include "virtual_keyboard.h"
 #include "hardware/adc.h"
+#include "hardware/timer.h"
+#include "pico/unique_id.h"
+#include "creds.h"
 
+// --- Macros ---
 #define N_INITIAL 3
 #define N_CONFIG 5
 #define N_AUTH 2
 
-const char CLIENT_ID[] = "bitdog2";
-
+// --- States from State Machine ---
 typedef enum
 {
     STATE_INITIAL,
@@ -27,12 +30,13 @@ typedef enum
     STATE_SUBSCRIBER
 } state_t;
 
+// --- Global Variables ---
 static uint8_t _y_initial = 0, _y_config = 0, _y_auth=0;
 static uint32_t _last_action_time = 0; // For debouncing
 static bool _wifi_connected = false, _mqtt_connected = false;
-static char _broker_ip[MAX_TEXT_LENGTH + 1] = "192.168.18.69";
-static char _ssid[MAX_TEXT_LENGTH + 1] = "REDEDOMARCOS";
-static char _password[MAX_TEXT_LENGTH + 1] = "45612300";
+static char _broker_ip[MAX_TEXT_LENGTH + 1];
+static char _ssid[MAX_TEXT_LENGTH + 1];
+static char _password[MAX_TEXT_LENGTH + 1];
 static bool _auth_mqtt = false;
 static char _user_mqtt[MAX_TEXT_LENGTH + 1] = "aluno";
 static char _pass_mqtt[MAX_TEXT_LENGTH + 1] = "senha123";
@@ -42,8 +46,10 @@ static int _key = 42;
 static bool _timestamp = true;
 static char _msg[MAX_TEXT_LENGTH + 1];
 static bool _subscribed = false;
+static char _client_id[2*PICO_UNIQUE_BOARD_ID_SIZE_BYTES + 1];
+static ssd1306_t *display_internal;
 
-ssd1306_t *display_internal;
+// --- Constants ---
 const state_t INITIAL_PATHS[] = {STATE_PUBLISHER, STATE_SUBSCRIBER, STATE_CONFIG};
 const state_t CONFIG_PATHS[] = {STATE_KEY, STATE_AUTH};
 const state_t AUTH_PATHS[] = {STATE_AUTH_USER, STATE_AUTH_PASS};
@@ -151,22 +157,22 @@ static bool _handle_mqtt_conn()
         ssd1306_show(display_internal);
 
         if(!_auth_mqtt)
-            mqtt_setup(CLIENT_ID, _broker_ip, NULL, NULL);
+            mqtt_setup(_client_id, _broker_ip, NULL, NULL);
         else
-            mqtt_setup(CLIENT_ID, _broker_ip, _user_mqtt, _pass_mqtt);
+            mqtt_setup(_client_id, _broker_ip, _user_mqtt, _pass_mqtt);
 
         sleep_ms(5000);
         _mqtt_connected = is_connected();
     }
 
-    return true;
+    return _mqtt_connected;
 }
 
 static void _handle_msg() {
     char buffer[256];
     memset(buffer, 0, sizeof(buffer));
     if(_timestamp) {
-        sprintf(buffer, "{\"valor\":%s,\"ts\":%ld}", _msg, time(NULL));
+        sprintf(buffer, "{\"valor\":%s,\"ts\":%ld}", _msg, to_ms_since_boot(get_absolute_time()));
     }
     else {
         strncpy(buffer, _msg, strlen(_msg));
@@ -362,7 +368,7 @@ state_t handle_state(state_t current_state)
             _subscribed = true;
         }
         ssd1306_clear(display_internal);
-        if(_cryp) xor_encrypt(last_mqtt_string, last_mqtt_string, sizeof(last_mqtt_string), _key);
+        if(_cryp) xor_encrypt(last_mqtt_string, last_mqtt_string, strlen(last_mqtt_string), _key);
         ssd1306_draw_string(display_internal, 5, 5, 1, last_mqtt_string);
 
         break;
@@ -388,6 +394,10 @@ int main()
         return 0;
     }
 
+    pico_get_unique_board_id_string(_client_id, 2* PICO_UNIQUE_BOARD_ID_SIZE_BYTES + 1);
+    strncpy(_ssid, SSID, strlen(SSID)+1);
+    strncpy(_password, PASS, strlen(PASS)+1);
+    strncpy(_broker_ip, BROKER_IP, strlen(BROKER_IP)+1);
     display_internal = &disp;
 
     state_t current_state = STATE_INITIAL;
