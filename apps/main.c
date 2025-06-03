@@ -368,9 +368,12 @@ state_t handle_state(state_t current_state)
             _subscribed = true;
         }
         ssd1306_clear(display_internal);
-        if(_cryp) xor_encrypt(last_mqtt_string, last_mqtt_string, strlen(last_mqtt_string), _key);
-        ssd1306_draw_string(display_internal, 5, 5, 1, last_mqtt_string);
-
+        if(_cryp) {
+            char buffer[256];
+            xor_encrypt(last_mqtt_string, buffer, strlen(last_mqtt_string), _key);
+            ssd1306_draw_string(display_internal, 5, 5, 1, buffer);
+        }
+        else ssd1306_draw_string(display_internal, 5, 5, 1, last_mqtt_string);
         break;
     }
 
